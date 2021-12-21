@@ -2,6 +2,7 @@ package org.echoosx.mirai.plugin.command
 
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.CompositeCommand
+import net.mamoe.mirai.console.command.SimpleCommand
 import net.mamoe.mirai.event.GlobalEventChannel
 import net.mamoe.mirai.event.events.MessageEvent
 import org.echoosx.mirai.plugin.AutoCheckGroup
@@ -116,5 +117,43 @@ object AutoCheckGroupCommand: CompositeCommand(
     suspend fun CommandSender.status(){
         val msg = if(config.enable) "白名单状态：启用" else "白名单状态：禁用"
         sendMessage(msg)
+    }
+}
+
+object MuteCommand:SimpleCommand(
+    AutoCheckGroup,
+    "mute","禁言",
+    description = "禁言"
+){
+    @Handler
+    suspend fun CommandSender.handle(groupId: Long,memberId:Long,time:Int){
+        try{
+            val group = bot?.getGroup(groupId)
+            val muteTarget = group?.get(memberId)
+            if(muteTarget?.permission!! < group.botAsMember.permission) {
+                muteTarget.mute(time)
+                sendMessage("已禁言群聊[${group.name}](${group.id})中的用户[${muteTarget.nick}](${muteTarget.id})")
+            }else
+                sendMessage("权限不足")
+        }catch (e:Exception){
+            sendMessage("禁言失败")
+        }
+    }
+}
+
+object BlockCommand:SimpleCommand(
+    AutoCheckGroup,
+    "block","拉黑",
+    description = "拉黑"
+){
+    @Handler
+    suspend fun CommandSender.block(friendId:Long){
+        try {
+            val blockFriend = bot?.getFriendOrFail(friendId)
+            blockFriend!!.delete()
+            sendMessage("已拉黑好友[${blockFriend.nick}](${friendId})")
+        }catch (e:Exception){
+            sendMessage("好友不存在")
+        }
     }
 }

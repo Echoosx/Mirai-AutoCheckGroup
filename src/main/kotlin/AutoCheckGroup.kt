@@ -7,12 +7,18 @@ import net.mamoe.mirai.console.command.CommandManager.INSTANCE.unregister
 import net.mamoe.mirai.console.extension.PluginComponentStorage
 import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescription
 import net.mamoe.mirai.console.plugin.jvm.KotlinPlugin
+import net.mamoe.mirai.contact.Contact.Companion.sendImage
 import net.mamoe.mirai.event.GlobalEventChannel
 import net.mamoe.mirai.event.events.*
+import net.mamoe.mirai.utils.ExternalResource
+import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import net.mamoe.mirai.utils.MiraiExperimentalApi
 import net.mamoe.mirai.utils.info
 import org.echoosx.mirai.plugin.command.AutoCheckGroupCommand
+import org.echoosx.mirai.plugin.command.BlockCommand
+import org.echoosx.mirai.plugin.command.MuteCommand
 import org.echoosx.mirai.plugin.data.AutoCheckGroupData
+import java.io.File
 import java.util.*
 
 object AutoCheckGroup : KotlinPlugin(
@@ -24,8 +30,7 @@ object AutoCheckGroup : KotlinPlugin(
         author("Echoosx")
         info(
             """
-            自动检测bot是否在白名单以外的群聊
-            每次重启会自动将bot所在群更新至群名单
+            被拉进小型群聊后自动退出    
         """.trimIndent()
         )
     }
@@ -43,40 +48,16 @@ object AutoCheckGroup : KotlinPlugin(
     override fun onEnable() {
         AutoCheckGroupData.reload()
         AutoCheckGroupCommand.register()
+        MuteCommand.register()
+        BlockCommand.register()
 
         val eventChannel = GlobalEventChannel.parentScope(this)
-//        eventChannel.subscribeOnce<BotOnlineEvent> {
-//            val groupCheckTimer = object : TimerTask(){
-//                override fun run() {
-//                    this@AutoCheckGroup.launch {
-//                        try {
-//                            var flag = false
-//                            val msg = buildString {
-//                                appendLine("检测到不在白名单中的群聊:")
-//                                bot.groups.forEach() {
-//                                    if((it.id !in AutoCheckGroupData.whiteGroup) && (it.id !in AutoCheckGroupData.outofWhite)) {
-////                                    it.sendMessage("さようなら〜")
-////                                    it.quit()
-//                                        AutoCheckGroupData.outofWhite.add(it.id)
-//                                        append("\n[${it.name}](${it.id})")
-//                                        flag = true
-//                                    }
-//                                }
-//                            }
-//                            if(flag)
-//                                bot.getFriendOrFail(AutoCheckGroupData.owner).sendMessage(msg)
-//                        }catch (e:Exception){
-//                            logger.error("自动检测群聊失败")
-//                        }
-//                    }
-//                }
-//            }
-//            Timer().schedule(groupCheckTimer,Date(),2 * 60 * 1000)
-//        }
 
         eventChannel.subscribeAlways<BotJoinGroupEvent.Invite> {
             if(AutoCheckGroupData.enable && group.id !in AutoCheckGroupData.whiteGroup){
                 delay(5000)
+                val image = group.uploadImage(AutoCheckGroup::class.java.classLoader.getResourceAsStream("pa.png")!!.toExternalResource())
+                group.sendMessage(image)
                 group.sendMessage("已自动退出，本群将在10s后爆炸")
                 group.quit()
                 bot.getFriendOrFail(AutoCheckGroupData.owner).sendMessage(
@@ -89,9 +70,10 @@ object AutoCheckGroup : KotlinPlugin(
         logger.info { "AutoCheckGroup plugin loaded" }
     }
 
-
     override fun onDisable(){
         AutoCheckGroupCommand.unregister()
+        MuteCommand.unregister()
+        BlockCommand.unregister()
         logger.info{"AutoCheckGroup plugin stopped"}
     }
 }
